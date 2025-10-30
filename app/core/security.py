@@ -1,25 +1,20 @@
-# auth.py - Versión actualizada con bcrypt directo
-
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
-import bcrypt  # Usar bcrypt directamente
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
-import models
-from database import get_db
-
-# Configuración de seguridad
-SECRET_KEY = (
-    "tu-clave-secreta-super-segura-cambiar-en-produccion-usar-openssl-rand-hex-32"
-)
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+from app.models import Usuario, Doctor, Paciente, TipoUsuarioEnum
+from app.core.database import get_db
+from app.core.config import settings
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/usuarios/login")
+
+# Constante para el tiempo de expiración del token
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
 
 def hash_password(password: str) -> str:
@@ -32,14 +27,9 @@ def hash_password(password: str) -> str:
     Returns:
         Hash de la contraseña
     """
-    # Convertir a bytes
     password_bytes = password.encode("utf-8")
-
-    # Generar salt y hash
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(password_bytes, salt)
-
-    # Retornar como string
     return hashed.decode("utf-8")
 
 
@@ -54,11 +44,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         True si coinciden, False si no
     """
-    # Convertir a bytes
     password_bytes = plain_password.encode("utf-8")
     hashed_bytes = hashed_password.encode("utf-8")
-
-    # Verificar
     return bcrypt.checkpw(password_bytes, hashed_bytes)
 
 
@@ -67,7 +54,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     Crea un token JWT con los datos proporcionados
 
     Args:
-        data: Diccionario con los datos a incluir en el token (user_id, email, tipo_usuario)
+        data: Diccionario con los datos a incluir en el token
         expires_delta: Tiempo de expiración del token
 
     Returns:
@@ -82,7 +69,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
     to_encode.update({"exp": expire, "iat": datetime.utcnow()})
 
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(
+        to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
+    )
     return encoded_jwt
 
 
@@ -100,7 +89,9 @@ def decode_access_token(token: str) -> dict:
         HTTPException: Si el token es inválido o ha expirado
     """
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
         return payload
     except JWTError:
         raise HTTPException(
@@ -112,7 +103,7 @@ def decode_access_token(token: str) -> dict:
 
 def get_current_user(
     token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
-) -> models.Usuario:
+) -> Usuario:
     """
     Obtiene el usuario actual desde el token JWT
 
@@ -142,8 +133,7 @@ def get_current_user(
     except JWTError:
         raise credentials_exception
 
-    # Buscar usuario en la base de datos
-    usuario = db.query(models.Usuario).filter(models.Usuario.id == user_id).first()
+    usuario = db.query(Usuario).filter(Usuario.id == user_id).first()
 
     if usuario is None:
         raise credentials_exception
@@ -157,9 +147,9 @@ def get_current_user(
 
 
 def get_current_active_doctor(
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> models.Doctor:
+) -> Doctor:
     """
     Obtiene el perfil de doctor del usuario actual
 
@@ -173,16 +163,12 @@ def get_current_active_doctor(
     Raises:
         HTTPException: Si el usuario no es doctor o no tiene perfil
     """
-    if current_user.tipo_usuario != models.TipoUsuarioEnum.DOCTOR:
+    if current_user.tipo_usuario != TipoUsuarioEnum.DOCTOR:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="El usuario no es un doctor"
         )
 
-    doctor = (
-        db.query(models.Doctor)
-        .filter(models.Doctor.usuario_id == current_user.id)
-        .first()
-    )
+    doctor = db.query(Doctor).filter(Doctor.usuario_id == current_user.id).first()
 
     if not doctor:
         raise HTTPException(
@@ -194,9 +180,9 @@ def get_current_active_doctor(
 
 
 def get_current_active_patient(
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> models.Paciente:
+) -> Paciente:
     """
     Obtiene el perfil de paciente del usuario actual
 
@@ -210,16 +196,12 @@ def get_current_active_patient(
     Raises:
         HTTPException: Si el usuario no es paciente o no tiene perfil
     """
-    if current_user.tipo_usuario != models.TipoUsuarioEnum.PACIENTE:
+    if current_user.tipo_usuario != TipoUsuarioEnum.PACIENTE:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="El usuario no es un paciente"
         )
 
-    paciente = (
-        db.query(models.Paciente)
-        .filter(models.Paciente.usuario_id == current_user.id)
-        .first()
-    )
+    paciente = db.query(Paciente).filter(Paciente.usuario_id == current_user.id).first()
 
     if not paciente:
         raise HTTPException(
@@ -228,3 +210,27 @@ def get_current_active_patient(
         )
 
     return paciente
+
+
+def get_current_admin(
+    current_user: Usuario = Depends(get_current_user),
+) -> Usuario:
+    """
+    Verifica que el usuario actual sea administrador
+
+    Args:
+        current_user: Usuario autenticado
+
+    Returns:
+        Usuario administrador
+
+    Raises:
+        HTTPException: Si el usuario no es administrador
+    """
+    if current_user.tipo_usuario != TipoUsuarioEnum.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo los administradores pueden acceder a este recurso",
+        )
+
+    return current_user

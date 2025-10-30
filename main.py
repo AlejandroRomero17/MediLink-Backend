@@ -4,11 +4,19 @@ import os
 from dotenv import load_dotenv
 
 # Importar modelos para crear las tablas
-from database import engine, Base
-import models
+from app.core.database import engine
+from app.models import Base
 
 # Importar routers
-from routers import usuarios, pacientes, doctores, citas
+from app.routers import (
+    usuarios,
+    pacientes,
+    doctores,
+    citas,
+    disponibilidad,
+    registro,
+    busqueda,
+)
 
 # Cargar variables de entorno
 load_dotenv()
@@ -20,7 +28,7 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="MediLink API",
     description="Sistema de gestión de citas médicas",
-    version="1.0.0",
+    version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
 )
@@ -39,27 +47,38 @@ app.add_middleware(
 )
 
 # Incluir routers
-app.include_router(usuarios.router)
-app.include_router(pacientes.router)
-app.include_router(doctores.router)
-app.include_router(citas.router)
+# main.py - ACTUALIZAR
+app.include_router(registro.router)  # ← Sin prefix
+app.include_router(usuarios.router)  # ← Sin prefix
+app.include_router(pacientes.router)  # ← Sin prefix
+app.include_router(doctores.router)  # ← Sin prefix
+app.include_router(citas.router)  # ← Sin prefix
+app.include_router(disponibilidad.router)  # ← Sin prefix
+app.include_router(busqueda.router)  # ← Sin prefix
 
 
 # Ruta raíz
 @app.get("/")
 async def root():
     return {
-        "mensaje": "Bienvenido a MediLink API",
-        "version": "1.0.0",
+        "mensaje": "Bienvenido a MediLink API v2.0",
+        "version": "2.0.0",
         "status": "activo",
         "documentacion": "/docs",
+        "features": [
+            "Registro combinado (usuario + perfil)",
+            "Sistema de disponibilidad",
+            "Autenticación JWT",
+            "Geolocalización de doctores",
+            "Valoraciones y reseñas",
+        ],
     }
 
 
 # Ruta de health check
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    return {"status": "healthy", "database": "connected", "version": "2.0.0"}
 
 
 # Ejecutar servidor

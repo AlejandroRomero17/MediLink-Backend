@@ -1,14 +1,13 @@
-# routers/usuarios.py
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import timedelta
 
-import models
-import schemas
-from database import get_db
-from auth import (
+# Importaciones actualizadas
+from app.models import Usuario
+from app.schemas import UsuarioCreate, UsuarioLogin, UsuarioResponse, UsuarioBase, Token
+from app.core.database import get_db
+from app.core.security import (
     hash_password,
     verify_password,
     create_access_token,
@@ -21,17 +20,15 @@ router = APIRouter(prefix="/api/usuarios", tags=["Usuarios"])
 
 @router.post(
     "/registro",
-    response_model=schemas.Token,  # Ahora devuelve Token en lugar de UsuarioResponse
+    response_model=Token,  # Ahora devuelve Token en lugar de UsuarioResponse
     status_code=status.HTTP_201_CREATED,
 )
-def registrar_usuario(usuario: schemas.UsuarioCreate, db: Session = Depends(get_db)):
+def registrar_usuario(usuario: UsuarioCreate, db: Session = Depends(get_db)):
     """
     Registra un nuevo usuario en el sistema y devuelve un token JWT
     """
     # Verificar si el email ya existe
-    db_usuario = (
-        db.query(models.Usuario).filter(models.Usuario.email == usuario.email).first()
-    )
+    db_usuario = db.query(Usuario).filter(Usuario.email == usuario.email).first()
     if db_usuario:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -39,7 +36,7 @@ def registrar_usuario(usuario: schemas.UsuarioCreate, db: Session = Depends(get_
         )
 
     # Crear nuevo usuario con contraseña encriptada
-    nuevo_usuario = models.Usuario(
+    nuevo_usuario = Usuario(
         email=usuario.email,
         password_hash=hash_password(usuario.password),
         nombre=usuario.nombre,
@@ -70,17 +67,13 @@ def registrar_usuario(usuario: schemas.UsuarioCreate, db: Session = Depends(get_
     }
 
 
-@router.post("/login", response_model=schemas.Token)
-def login(credenciales: schemas.UsuarioLogin, db: Session = Depends(get_db)):
+@router.post("/login", response_model=Token)
+def login(credenciales: UsuarioLogin, db: Session = Depends(get_db)):
     """
     Inicia sesión y devuelve un token JWT
     """
     # Buscar usuario por email
-    usuario = (
-        db.query(models.Usuario)
-        .filter(models.Usuario.email == credenciales.email)
-        .first()
-    )
+    usuario = db.query(Usuario).filter(Usuario.email == credenciales.email).first()
 
     if not usuario or not verify_password(credenciales.password, usuario.password_hash):
         raise HTTPException(
@@ -112,45 +105,45 @@ def login(credenciales: schemas.UsuarioLogin, db: Session = Depends(get_db)):
     }
 
 
-@router.get("/me", response_model=schemas.UsuarioResponse)
-def obtener_usuario_actual(current_user: models.Usuario = Depends(get_current_user)):
+@router.get("/me", response_model=UsuarioResponse)
+def obtener_usuario_actual(current_user: Usuario = Depends(get_current_user)):
     """
     Obtiene la información del usuario autenticado actual
     """
     return current_user
 
 
-@router.get("", response_model=List[schemas.UsuarioResponse])
+@router.get("", response_model=List[UsuarioResponse])
 def obtener_usuarios(
     skip: int = 0,
     limit: int = 100,
     tipo: str = None,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),  # Requiere autenticación
+    current_user: Usuario = Depends(get_current_user),  # Requiere autenticación
 ):
     """
     Obtiene la lista de usuarios registrados (requiere autenticación)
     """
-    query = db.query(models.Usuario)
+    query = db.query(Usuario)
 
     # Filtrar por tipo de usuario si se proporciona
     if tipo:
-        query = query.filter(models.Usuario.tipo_usuario == tipo)
+        query = query.filter(Usuario.tipo_usuario == tipo)
 
     usuarios = query.offset(skip).limit(limit).all()
     return usuarios
 
 
-@router.get("/{usuario_id}", response_model=schemas.UsuarioResponse)
+@router.get("/{usuario_id}", response_model=UsuarioResponse)
 def obtener_usuario(
     usuario_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),  # Requiere autenticación
+    current_user: Usuario = Depends(get_current_user),  # Requiere autenticación
 ):
     """
     Obtiene un usuario específico por ID (requiere autenticación)
     """
-    usuario = db.query(models.Usuario).filter(models.Usuario.id == usuario_id).first()
+    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
 
     if not usuario:
         raise HTTPException(
@@ -160,12 +153,12 @@ def obtener_usuario(
     return usuario
 
 
-@router.put("/{usuario_id}", response_model=schemas.UsuarioResponse)
+@router.put("/{usuario_id}", response_model=UsuarioResponse)
 def actualizar_usuario(
     usuario_id: int,
-    usuario_update: schemas.UsuarioBase,
+    usuario_update: UsuarioBase,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(get_current_user),
 ):
     """
     Actualiza la información de un usuario
@@ -178,7 +171,7 @@ def actualizar_usuario(
             detail="No tienes permiso para actualizar este usuario",
         )
 
-    usuario = db.query(models.Usuario).filter(models.Usuario.id == usuario_id).first()
+    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
 
     if not usuario:
         raise HTTPException(
@@ -199,7 +192,7 @@ def actualizar_usuario(
 def desactivar_usuario(
     usuario_id: int,
     db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(get_current_user),
 ):
     """
     Desactiva un usuario (soft delete)
@@ -212,7 +205,7 @@ def desactivar_usuario(
             detail="No tienes permiso para desactivar este usuario",
         )
 
-    usuario = db.query(models.Usuario).filter(models.Usuario.id == usuario_id).first()
+    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
 
     if not usuario:
         raise HTTPException(

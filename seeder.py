@@ -6,10 +6,10 @@ Limpia y llena la BD con datos de prueba
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, date
 
-from database import SessionLocal, engine
+from app.core.database import SessionLocal, engine
 from models import Base, Usuario, Paciente, Doctor, Cita
 from models import TipoUsuarioEnum, EstadoCitaEnum, EspecialidadEnum, GeneroEnum
-from auth import (
+from app.core.auth import (
     hash_password,
 )  # Importar la función de hash del sistema de autenticación
 
