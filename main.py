@@ -16,6 +16,7 @@ from app.routers import (
     disponibilidad,
     registro,
     busqueda,
+    horarios,  # ← NUEVO: Router de horarios
 )
 
 # Cargar variables de entorno
@@ -46,15 +47,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Incluir routers
-# main.py - ACTUALIZAR
-app.include_router(registro.router)  # ← Sin prefix
-app.include_router(usuarios.router)  # ← Sin prefix
-app.include_router(pacientes.router)  # ← Sin prefix
-app.include_router(doctores.router)  # ← Sin prefix
-app.include_router(citas.router)  # ← Sin prefix
-app.include_router(disponibilidad.router)  # ← Sin prefix
-app.include_router(busqueda.router)  # ← Sin prefix
+# Incluir routers (todos ya tienen su prefix definido)
+app.include_router(registro.router)  # /api/registro
+app.include_router(usuarios.router)  # /api/usuarios
+app.include_router(pacientes.router)  # /api/pacientes
+app.include_router(doctores.router)  # /api/doctores
+app.include_router(citas.router)  # /api/citas
+app.include_router(disponibilidad.router)  # /api/disponibilidad
+app.include_router(busqueda.router)  # /api/busqueda
+app.include_router(horarios.router)  # /api/horarios ← NUEVO
 
 
 # Ruta raíz
@@ -67,7 +68,7 @@ async def root():
         "documentacion": "/docs",
         "features": [
             "Registro combinado (usuario + perfil)",
-            "Sistema de disponibilidad",
+            "Sistema de horarios flexible por día",  # ← ACTUALIZADO
             "Autenticación JWT",
             "Geolocalización de doctores",
             "Valoraciones y reseñas",

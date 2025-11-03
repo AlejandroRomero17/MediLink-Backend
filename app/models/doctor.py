@@ -28,26 +28,33 @@ class Doctor(Base):
     )
     especialidad = Column(Enum(EspecialidadEnum), nullable=False)
     cedula_profesional = Column(String(20), unique=True, nullable=False)
-    consultorio = Column(String(200))
-    direccion_consultorio = Column(Text)
-    ciudad = Column(String(100))
-    estado = Column(String(100))
-    codigo_postal = Column(String(10))
-    # Coordenadas para búsqueda por ubicación
+
+    # Campos ahora OBLIGATORIOS
+    consultorio = Column(String(200), nullable=False)
+    direccion_consultorio = Column(Text, nullable=False)
+    ciudad = Column(String(100), nullable=False)
+    estado = Column(String(100), nullable=False)
+    codigo_postal = Column(String(10), nullable=False)
+    anos_experiencia = Column(Integer, nullable=False)
+
+    # Coordenadas para búsqueda por ubicación (opcionales por ahora)
     latitud = Column(Float)
     longitud = Column(Float)
-    # Horarios y costos
-    horario_atencion = Column(Text)
-    costo_consulta = Column(Float)
-    duracion_cita_minutos = Column(Integer, default=30)
-    # Información adicional
-    anos_experiencia = Column(Integer)
+
+    # Costos y duración (ahora obligatorios)
+    costo_consulta = Column(Float, nullable=False)
+    duracion_cita_minutos = Column(Integer, default=30, nullable=False)
+
+    # Información adicional (opcional)
     universidad = Column(String(200))
     biografia = Column(Text)
     foto_url = Column(String(500))
+
+    # Modalidades de atención
     acepta_seguro = Column(Boolean, default=False)
     atiende_domicilio = Column(Boolean, default=False)
     atiende_videollamada = Column(Boolean, default=False)
+
     # Valoraciones
     calificacion_promedio = Column(Float, default=0.0)
     total_valoraciones = Column(Integer, default=0)

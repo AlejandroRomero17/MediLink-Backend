@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 # Importaciones actualizadas
-from app.models import Doctor, Usuario, TipoUsuarioEnum, EspecialidadEnum
+from app.models import Doctor, Usuario, HorarioDoctor, TipoUsuarioEnum, EspecialidadEnum
 from app.schemas import DoctorCreate, DoctorResponse, DoctorCompleto, DoctorBase
 from app.core.database import get_db
 
@@ -83,7 +83,10 @@ def obtener_doctores(
 
 @router.get("/{doctor_id}", response_model=DoctorCompleto)
 def obtener_doctor(doctor_id: int, db: Session = Depends(get_db)):
-    """Obtiene un doctor específico con su información completa"""
+    """
+    Obtiene un doctor específico con su información completa
+    Incluye ahora sus horarios de atención
+    """
 
     doctor = db.query(Doctor).filter(Doctor.id == doctor_id).first()
 
@@ -97,7 +100,10 @@ def obtener_doctor(doctor_id: int, db: Session = Depends(get_db)):
 
 @router.get("/usuario/{usuario_id}", response_model=DoctorCompleto)
 def obtener_doctor_por_usuario(usuario_id: int, db: Session = Depends(get_db)):
-    """Obtiene el perfil de doctor asociado a un usuario"""
+    """
+    Obtiene el perfil de doctor asociado a un usuario
+    Incluye sus horarios de atención
+    """
 
     doctor = db.query(Doctor).filter(Doctor.usuario_id == usuario_id).first()
 
