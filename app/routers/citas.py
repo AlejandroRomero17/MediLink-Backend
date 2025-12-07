@@ -13,6 +13,7 @@ from app.models.doctor import Doctor
 from app.models.paciente import Paciente
 from app.models.horario_doctor import HorarioDoctor
 from app.models.enums import EstadoCitaEnum, TipoUsuarioEnum
+from datetime import datetime, timedelta, timezone  # <- Agregar timezone
 from app.schemas.cita import (
     CitaCreate,
     CitaUpdate,
@@ -43,8 +44,15 @@ def validar_disponibilidad_doctor(
 ) -> bool:
     """Valida si el doctor está disponible en la fecha/hora indicada"""
 
-    # 1. Verificar que la fecha no sea en el pasado
-    if fecha_hora <= datetime.now():
+    # 1. Verificar que la fecha no sea en el pasado (CORREGIDO)
+    # Convertir a timezone-aware si es naive
+    if fecha_hora.tzinfo is None:
+        fecha_hora = fecha_hora.replace(tzinfo=timezone.utc)
+
+    # Usar datetime actual en UTC para comparación
+    ahora_utc = datetime.now(timezone.utc)
+
+    if fecha_hora <= ahora_utc:
         raise HTTPException(
             status_code=400, detail="No se pueden agendar citas en fechas pasadas"
         )
@@ -55,7 +63,10 @@ def validar_disponibilidad_doctor(
         raise HTTPException(status_code=404, detail="Doctor no encontrado")
 
     # 3. Verificar que la fecha sea en horario laboral del doctor
-    dia_semana = fecha_hora.strftime("%A").upper()
+    # Para la comparación de horarios, usar datetime naive (sin timezone)
+    fecha_hora_naive = fecha_hora.replace(tzinfo=None)
+
+    dia_semana = fecha_hora_naive.strftime("%A").upper()
     dia_map = {
         "MONDAY": "LUNES",
         "TUESDAY": "MARTES",
@@ -83,20 +94,27 @@ def validar_disponibilidad_doctor(
         )
 
     # Verificar hora dentro del rango
-    hora_cita = fecha_hora.time()
+    hora_cita = fecha_hora_naive.time()
     if not (horario.hora_inicio <= hora_cita < horario.hora_fin):
         raise HTTPException(
             status_code=400,
             detail=f"La hora debe estar entre {horario.hora_inicio} y {horario.hora_fin}",
         )
 
-    # 4. Verificar que no haya otra cita en ese horario (VERSIÓN SIMPLIFICADA)
-    fecha_fin = fecha_hora + timedelta(minutes=duracion_minutos)
+        # 4. Verificar que no haya otra cita en ese horario
+    fecha_fin = fecha_hora_naive + timedelta(minutes=duracion_minutos)
 
     # Obtener todas las citas del doctor que podrían superponerse
     citas_existentes = db.query(Cita).filter(
         Cita.doctor_id == doctor_id,
-        Cita.estado.in_([EstadoCitaEnum.PENDIENTE, EstadoCitaEnum.CONFIRMADA]),
+        Cita.estado.in_(
+            [
+                EstadoCitaEnum.PENDIENTE,
+                EstadoCitaEnum.CONFIRMADA,
+                EstadoCitaEnum.EN_CURSO,
+            ]
+        ),
+        # ⭐ No incluir citas canceladas
     )
 
     if excluir_cita_id:
@@ -111,7 +129,10 @@ def validar_disponibilidad_doctor(
         )
 
         # Verificar si hay superposición
-        if fecha_hora < fecha_fin_existente and fecha_fin > cita_existente.fecha_hora:
+        if (
+            fecha_hora_naive < fecha_fin_existente
+            and fecha_fin > cita_existente.fecha_hora
+        ):
             raise HTTPException(
                 status_code=400,
                 detail=f"El doctor ya tiene una cita programada a las {cita_existente.fecha_hora.strftime('%H:%M')}",
@@ -597,9 +618,7 @@ def actualizar_cita(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    """
-    Actualizar una cita existente (solo paciente dueño de la cita)
-    """
+    """Actualizar una cita existente"""
     if current_user.tipo_usuario != TipoUsuarioEnum.PACIENTE:
         raise HTTPException(
             status_code=403, detail="Solo pacientes pueden actualizar citas"
@@ -628,6 +647,19 @@ def actualizar_cita(
             db, cita.doctor_id, cita_data.fecha_hora, cita.duracion_minutos, cita_id
         )
         cita.fecha_hora = cita_data.fecha_hora
+
+    estados_no_editables = [
+        EstadoCitaEnum.CANCELADA,
+        EstadoCitaEnum.CANCELADA_PACIENTE,
+        EstadoCitaEnum.CANCELADA_DOCTOR,
+        EstadoCitaEnum.COMPLETADA,
+    ]
+
+    if cita.estado in estados_no_editables:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No se puede actualizar una cita en estado {cita.estado.value}",
+        )
 
     # Actualizar otros campos
     update_data = cita_data.dict(exclude_unset=True)
@@ -682,6 +714,7 @@ def actualizar_cita(
     return response
 
 
+# 3. CORRECCIÓN EN CANCELAR CITA
 @router.put("/{cita_id}/cancelar")
 def cancelar_cita(
     cita_id: int,
@@ -689,34 +722,51 @@ def cancelar_cita(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    """
-    Cancelar una cita (paciente o doctor)
-    """
+    """Cancelar una cita (paciente o doctor)"""
+
     cita = db.query(Cita).filter(Cita.id == cita_id).first()
     if not cita:
         raise HTTPException(status_code=404, detail="Cita no encontrada")
 
-    # Verificar permisos
+    # Verificar permisos y determinar quién cancela
+    es_paciente = False
+    es_doctor = False
+
     if current_user.tipo_usuario == TipoUsuarioEnum.PACIENTE:
         paciente = (
             db.query(Paciente).filter(Paciente.usuario_id == current_user.id).first()
         )
         if cita.paciente_id != paciente.id:
             raise HTTPException(status_code=403, detail="No puedes cancelar esta cita")
+        es_paciente = True
+
     elif current_user.tipo_usuario == TipoUsuarioEnum.DOCTOR:
         doctor = db.query(Doctor).filter(Doctor.usuario_id == current_user.id).first()
         if cita.doctor_id != doctor.id:
             raise HTTPException(status_code=403, detail="No puedes cancelar esta cita")
+        es_doctor = True
 
-    # Verificar que la cita no esté ya cancelada o completada
-    if cita.estado in [EstadoCitaEnum.CANCELADA, EstadoCitaEnum.COMPLETADA]:
+    # ⭐ CORRECCIÓN: Verificar estados de cancelación
+    estados_cancelados = [
+        EstadoCitaEnum.CANCELADA,
+        EstadoCitaEnum.CANCELADA_PACIENTE,
+        EstadoCitaEnum.CANCELADA_DOCTOR,
+    ]
+
+    if cita.estado in estados_cancelados or cita.estado == EstadoCitaEnum.COMPLETADA:
         raise HTTPException(
             status_code=400,
             detail=f"No se puede cancelar una cita en estado {cita.estado.value}",
         )
 
-    # Actualizar cita
-    cita.estado = EstadoCitaEnum.CANCELADA
+    # ⭐ CORRECCIÓN: Asignar estado según quién cancela
+    if es_paciente:
+        cita.estado = EstadoCitaEnum.CANCELADA_PACIENTE
+    elif es_doctor:
+        cita.estado = EstadoCitaEnum.CANCELADA_DOCTOR
+    else:
+        cita.estado = EstadoCitaEnum.CANCELADA  # Fallback genérico
+
     cita.motivo_cancelacion = cancelacion.motivo_cancelacion
     cita.cancelado_por_usuario_id = current_user.id
     cita.fecha_cancelacion = datetime.now()
@@ -728,6 +778,7 @@ def cancelar_cita(
     return handle_db_operation(db, cancel_operation)
 
 
+# 4. CORRECCIÓN EN COMPLETAR CITA
 @router.put("/{cita_id}/completar", response_model=CitaConPaciente)
 def completar_cita(
     cita_id: int,
@@ -735,9 +786,7 @@ def completar_cita(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    """
-    Marcar cita como completada y agregar notas médicas (solo doctor)
-    """
+    """Marcar cita como completada"""
     if current_user.tipo_usuario != TipoUsuarioEnum.DOCTOR:
         raise HTTPException(
             status_code=403, detail="Solo doctores pueden completar citas"
@@ -752,6 +801,16 @@ def completar_cita(
         raise HTTPException(status_code=404, detail="Cita no encontrada")
 
     if cita.estado == EstadoCitaEnum.CANCELADA:
+        raise HTTPException(
+            status_code=400, detail="No se puede completar una cita cancelada"
+        )
+    estados_cancelados = [
+        EstadoCitaEnum.CANCELADA,
+        EstadoCitaEnum.CANCELADA_PACIENTE,
+        EstadoCitaEnum.CANCELADA_DOCTOR,
+    ]
+
+    if cita.estado in estados_cancelados:
         raise HTTPException(
             status_code=400, detail="No se puede completar una cita cancelada"
         )
@@ -857,27 +916,45 @@ def cambiar_estado_cita(
     return handle_db_operation(db, change_state_operation)
 
 
+# 5. CORRECCIÓN EN ESTADÍSTICAS
 @router.get("/estadisticas/mis-citas", response_model=CitasEstadisticas)
 def obtener_estadisticas_citas(
     db: Session = Depends(get_db), current_user: Usuario = Depends(get_current_user)
 ):
-    """
-    Obtener estadísticas de citas del usuario actual
-    """
+    """Obtener estadísticas de citas del usuario actual"""
+
     if current_user.tipo_usuario == TipoUsuarioEnum.PACIENTE:
         paciente = (
             db.query(Paciente).filter(Paciente.usuario_id == current_user.id).first()
         )
+        if not paciente:
+            raise HTTPException(
+                status_code=404, detail="Perfil de paciente no encontrado"
+            )
         base_query = db.query(Cita).filter(Cita.paciente_id == paciente.id)
     else:
         doctor = db.query(Doctor).filter(Doctor.usuario_id == current_user.id).first()
+        if not doctor:
+            raise HTTPException(
+                status_code=404, detail="Perfil de doctor no encontrado"
+            )
         base_query = db.query(Cita).filter(Cita.doctor_id == doctor.id)
 
     total = base_query.count()
     pendientes = base_query.filter(Cita.estado == EstadoCitaEnum.PENDIENTE).count()
     confirmadas = base_query.filter(Cita.estado == EstadoCitaEnum.CONFIRMADA).count()
     completadas = base_query.filter(Cita.estado == EstadoCitaEnum.COMPLETADA).count()
-    canceladas = base_query.filter(Cita.estado == EstadoCitaEnum.CANCELADA).count()
+
+    # ⭐ CORRECCIÓN: Contar todas las cancelaciones
+    canceladas = base_query.filter(
+        Cita.estado.in_(
+            [
+                EstadoCitaEnum.CANCELADA,
+                EstadoCitaEnum.CANCELADA_PACIENTE,
+                EstadoCitaEnum.CANCELADA_DOCTOR,
+            ]
+        )
+    ).count()
 
     # Obtener próxima cita
     proxima = (

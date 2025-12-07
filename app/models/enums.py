@@ -1,3 +1,4 @@
+# app/models/enums.py
 from enum import Enum
 
 
@@ -48,7 +49,7 @@ class EspecialidadEnum(str, Enum):
 
 
 class DiaSemanaEnum(str, Enum):
-    """Días de la semana - IMPORTANTE: usar strings en lugar de enteros"""
+    """Días de la semana"""
 
     LUNES = "LUNES"
     MARTES = "MARTES"
@@ -66,6 +67,7 @@ class EstadoCitaEnum(str, Enum):
     CONFIRMADA = "confirmada"
     EN_CURSO = "en_curso"
     COMPLETADA = "completada"
+    CANCELADA = "cancelada"  # ⭐ AGREGADO - Estado genérico de cancelación
     CANCELADA_PACIENTE = "cancelada_paciente"
     CANCELADA_DOCTOR = "cancelada_doctor"
     NO_ASISTIO = "no_asistio"

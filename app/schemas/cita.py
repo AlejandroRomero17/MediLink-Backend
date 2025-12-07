@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, validator
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone  # <- Agregar timezone
 from typing import Optional
 from app.models.enums import EstadoCitaEnum
 
@@ -27,26 +27,39 @@ class CitaCreate(BaseModel):
 
     @validator("fecha_hora")
     def validar_fecha_futura(cls, v):
-        if v <= datetime.now():
-            raise ValueError("La fecha de la cita debe ser en el futuro")
+        if v:
+            # Convertir a timezone-aware si es naive
+            if v.tzinfo is None:
+                v = v.replace(tzinfo=timezone.utc)
+
+            # Usar datetime actual en UTC para comparación
+            now_utc = datetime.now(timezone.utc)
+
+            if v <= now_utc:
+                raise ValueError("La fecha de la cita debe ser en el futuro")
         return v
 
     @validator("fecha_hora")
     def validar_antelacion_minima(cls, v):
-        ahora = datetime.now()
-        antelacion_minima = timedelta(hours=24)  # 24 horas mínimas
+        if v:
+            # Convertir a timezone-aware si es naive
+            if v.tzinfo is None:
+                v = v.replace(tzinfo=timezone.utc)
 
-        if v <= ahora + antelacion_minima:
-            raise ValueError(
-                "Las citas deben agendarse con al menos 24 horas de antelación"
-            )
+            ahora_utc = datetime.now(timezone.utc)
+            antelacion_minima = timedelta(hours=24)  # 24 horas mínimas
 
-        # También validar antelación máxima (ej: 3 meses)
-        antelacion_maxima = timedelta(days=90)
-        if v > ahora + antelacion_maxima:
-            raise ValueError(
-                "No se pueden agendar citas con más de 3 meses de antelación"
-            )
+            if v <= ahora_utc + antelacion_minima:
+                raise ValueError(
+                    "Las citas deben agendarse con al menos 24 horas de antelación"
+                )
+
+            # También validar antelación máxima (ej: 3 meses)
+            antelacion_maxima = timedelta(days=90)
+            if v > ahora_utc + antelacion_maxima:
+                raise ValueError(
+                    "No se pueden agendar citas con más de 3 meses de antelación"
+                )
 
         return v
 
@@ -74,8 +87,16 @@ class CitaUpdate(BaseModel):
 
     @validator("fecha_hora")
     def validar_fecha_futura(cls, v):
-        if v and v <= datetime.now():
-            raise ValueError("La fecha de la cita debe ser en el futuro")
+        if v:
+            # Convertir a timezone-aware si es naive
+            if v.tzinfo is None:
+                v = v.replace(tzinfo=timezone.utc)
+
+            # Usar datetime actual en UTC para comparación
+            now_utc = datetime.now(timezone.utc)
+
+            if v <= now_utc:
+                raise ValueError("La fecha de la cita debe ser en el futuro")
         return v
 
     class Config:

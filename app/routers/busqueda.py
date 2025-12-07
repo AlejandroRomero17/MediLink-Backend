@@ -1,3 +1,4 @@
+# app/routers/busqueda.py
 """
 Router de búsqueda avanzada de doctores
 Permite buscar por múltiples criterios: especialidad, ubicación, precio, calificación

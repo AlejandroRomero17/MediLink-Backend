@@ -55,7 +55,7 @@ def create_usuarios(db):
             "password": "password123",
             "nombre": "Carlos",
             "apellido": "García",
-            "telefono": "555-0101",
+            "telefono": "555-0101-1234",
             "tipo_usuario": TipoUsuarioEnum.DOCTOR,
         },
         {
@@ -63,7 +63,7 @@ def create_usuarios(db):
             "password": "password123",
             "nombre": "Ana",
             "apellido": "Martínez",
-            "telefono": "555-0102",
+            "telefono": "555-0102-1234",
             "tipo_usuario": TipoUsuarioEnum.DOCTOR,
         },
         {
@@ -71,7 +71,7 @@ def create_usuarios(db):
             "password": "password123",
             "nombre": "Roberto",
             "apellido": "López",
-            "telefono": "555-0103",
+            "telefono": "555-0103-1234",
             "tipo_usuario": TipoUsuarioEnum.DOCTOR,
         },
         {
@@ -79,7 +79,7 @@ def create_usuarios(db):
             "password": "password123",
             "nombre": "Laura",
             "apellido": "Rodríguez",
-            "telefono": "555-0104",
+            "telefono": "555-0104-1234",
             "tipo_usuario": TipoUsuarioEnum.DOCTOR,
         },
         # Pacientes
@@ -88,7 +88,7 @@ def create_usuarios(db):
             "password": "password123",
             "nombre": "María",
             "apellido": "Pérez",
-            "telefono": "555-0201",
+            "telefono": "555-0201-1234",
             "tipo_usuario": TipoUsuarioEnum.PACIENTE,
         },
         {
@@ -96,7 +96,7 @@ def create_usuarios(db):
             "password": "password123",
             "nombre": "Juan",
             "apellido": "Hernández",
-            "telefono": "555-0202",
+            "telefono": "555-0202-1234",
             "tipo_usuario": TipoUsuarioEnum.PACIENTE,
         },
         {
@@ -104,7 +104,7 @@ def create_usuarios(db):
             "password": "password123",
             "nombre": "Laura",
             "apellido": "González",
-            "telefono": "555-0203",
+            "telefono": "555-0203-1234",
             "tipo_usuario": TipoUsuarioEnum.PACIENTE,
         },
         {
@@ -112,7 +112,7 @@ def create_usuarios(db):
             "password": "password123",
             "nombre": "Carlos",
             "apellido": "Ramírez",
-            "telefono": "555-0204",
+            "telefono": "555-0204-1234",
             "tipo_usuario": TipoUsuarioEnum.PACIENTE,
         },
         # Admin
@@ -121,7 +121,7 @@ def create_usuarios(db):
             "password": "admin123",
             "nombre": "Admin",
             "apellido": "Sistema",
-            "telefono": "555-0001",
+            "telefono": "555-0001-1234",
             "tipo_usuario": TipoUsuarioEnum.ADMIN,
         },
     ]
