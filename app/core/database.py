@@ -1,31 +1,39 @@
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
 from app.core.config import settings
+import logging
 
+# Configurar logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# --- Crear la base de datos si no existe ---
-# Crear conexión temporal (sin especificar DB)
-temp_engine = create_engine(
-    f"mysql+pymysql://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}",
-    pool_pre_ping=True,
-)
+# Base para modelos
+Base = declarative_base()
 
-# Crear la base de datos si no existe
-with temp_engine.connect() as conn:
-    conn.execute(
-        text(
-            f"CREATE DATABASE IF NOT EXISTS {settings.DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-        )
+# --- Crear engine principal usando la URL de Railway ---
+try:
+    # Usar la URL de la configuración (Railway proporciona DATABASE_URL completa)
+    engine = create_engine(
+        settings.sqlalchemy_database_url,  # Usar la propiedad que definimos
+        pool_pre_ping=True,
+        pool_recycle=300,
+        pool_size=5,
+        max_overflow=10,
+        echo=False,  # Desactivar en producción para mejor rendimiento
+        connect_args={"connect_timeout": 30},
     )
-    print(f"✅ Base de datos '{settings.DB_NAME}' verificada o creada con éxito.")
 
-# --- Crear engine principal apuntando a la base de datos ---
-engine = create_engine(
-    settings.DATABASE_URL,
-    pool_pre_ping=True,
-    pool_recycle=3600,
-    echo=True,  # Muestra consultas SQL (desactivar en producción)
-)
+    logger.info(f"✅ Engine de base de datos creado exitosamente")
+
+    # Probar la conexión
+    with engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
+        logger.info("✅ Conexión a base de datos verificada")
+
+except Exception as e:
+    logger.error(f"❌ Error conectando a la base de datos: {str(e)}")
+    logger.info(f"URL usada: {settings.sqlalchemy_database_url}")
+    raise
 
 # --- Crear sesión de base de datos ---
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -33,8 +41,16 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # --- Dependencia para obtener sesión en FastAPI ---
 def get_db():
+    """
+    Dependencia para obtener sesión de base de datos.
+    Usar en endpoints de FastAPI.
+    """
     db = SessionLocal()
     try:
         yield db
+    except Exception as e:
+        logger.error(f"Error en sesión de base de datos: {str(e)}")
+        db.rollback()
+        raise
     finally:
         db.close()
