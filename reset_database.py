@@ -7,6 +7,7 @@ Solo usar en desarrollo
 """
 
 import sys
+import os
 from sqlalchemy import text
 
 # Importar configuración de base de datos
@@ -21,14 +22,18 @@ def reset_database():
     print("🗑️  RESET DE BASE DE DATOS - MEDILINK")
     print("=" * 60)
 
-    # Confirmar acción
-    confirm = input(
-        "\n⚠️  ADVERTENCIA: Esto eliminará TODOS los datos.\n¿Estás seguro? (escribe 'SI' para continuar): "
-    )
+    # Saltar confirmación si está en modo automático (CI/CD)
+    auto_confirm = os.getenv("AUTO_CONFIRM", "false").lower() == "true"
 
-    if confirm != "SI":
-        print("\n❌ Operación cancelada.")
-        sys.exit(0)
+    if not auto_confirm:
+        confirm = input(
+            "\n⚠️  ADVERTENCIA: Esto eliminará TODOS los datos.\n¿Estás seguro? (escribe 'SI' para continuar): "
+        )
+        if confirm != "SI":
+            print("\n❌ Operación cancelada.")
+            sys.exit(0)
+    else:
+        print("\n⚡ Modo automático detectado - ejecutando sin confirmación...")
 
     try:
         print("\n📋 Eliminando todas las tablas...")
@@ -67,7 +72,6 @@ def reset_database():
                 print(f"   • {table}")
 
         print("\n✨ La base de datos está lista para usar.")
-        print("   Puedes iniciar el servidor con: uvicorn main:app --reload\n")
 
     except Exception as e:
         print(f"\n❌ ERROR al recrear la base de datos:")

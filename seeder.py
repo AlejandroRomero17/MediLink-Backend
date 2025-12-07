@@ -1,4 +1,4 @@
-# seeder.py
+# seeder.py - Actualizado con Xicotepec, Puebla
 import sys
 import os
 from datetime import datetime, time, date, timedelta
@@ -13,6 +13,7 @@ from app.models.paciente import Paciente
 from app.models.doctor import Doctor
 from app.models.horario_doctor import HorarioDoctor
 from app.models.cita import Cita
+from app.models.base import Base
 from app.models.enums import (
     TipoUsuarioEnum,
     GeneroEnum,
@@ -23,6 +24,27 @@ from app.models.enums import (
 )
 from app.core.security import hash_password
 
+# Importar el modelo de Incident
+from app.routers.incidents import Incident
+
+
+def create_all_tables():
+    """Crear todas las tablas incluyendo incidents"""
+    print("🔨 Creando todas las tablas en la base de datos...")
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("✅ Todas las tablas creadas/verificadas exitosamente")
+
+        # Mostrar tablas creadas
+        from sqlalchemy import inspect
+
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        print(f"📋 Tablas en la base de datos: {', '.join(tables)}")
+    except Exception as e:
+        print(f"❌ Error creando tablas: {e}")
+        raise
+
 
 def clear_database():
     """Limpiar todas las tablas de la base de datos"""
@@ -32,6 +54,7 @@ def clear_database():
         # Eliminar en orden para respetar las foreign keys
         db.query(Cita).delete()
         db.query(HorarioDoctor).delete()
+        db.query(Incident).delete()
         db.query(Paciente).delete()
         db.query(Doctor).delete()
         db.query(Usuario).delete()
@@ -51,77 +74,77 @@ def create_usuarios(db):
     usuarios_data = [
         # Doctores
         {
-            "email": "dr.garcia@medilink.com",
-            "password": "password123",
-            "nombre": "Carlos",
-            "apellido": "García",
-            "telefono": "555-0101-1234",
-            "tipo_usuario": TipoUsuarioEnum.DOCTOR,
-        },
-        {
-            "email": "dra.martinez@medilink.com",
+            "email": "ana.garcia@utxicotepec.edu.mx",
             "password": "password123",
             "nombre": "Ana",
+            "apellido": "García",
+            "telefono": "776-101-2345",
+            "tipo_usuario": TipoUsuarioEnum.DOCTOR,
+        },
+        {
+            "email": "jaime.martinez@utxicotepec.edu.mx",
+            "password": "password123",
+            "nombre": "Jaime",
             "apellido": "Martínez",
-            "telefono": "555-0102-1234",
+            "telefono": "776-102-2345",
             "tipo_usuario": TipoUsuarioEnum.DOCTOR,
         },
         {
-            "email": "dr.lopez@medilink.com",
+            "email": "martin.lopez@utxicotepec.edu.mx",
             "password": "password123",
-            "nombre": "Roberto",
+            "nombre": "Martín",
             "apellido": "López",
-            "telefono": "555-0103-1234",
+            "telefono": "776-103-2345",
             "tipo_usuario": TipoUsuarioEnum.DOCTOR,
         },
         {
-            "email": "dra.rodriguez@medilink.com",
+            "email": "alejandro.rodriguez@utxicotepec.edu.mx",
             "password": "password123",
-            "nombre": "Laura",
+            "nombre": "Alejandro",
             "apellido": "Rodríguez",
-            "telefono": "555-0104-1234",
+            "telefono": "776-104-2345",
             "tipo_usuario": TipoUsuarioEnum.DOCTOR,
         },
         # Pacientes
         {
-            "email": "maria.perez@email.com",
+            "email": "maria.perez@utxicotepec.edu.mx",
             "password": "password123",
             "nombre": "María",
             "apellido": "Pérez",
-            "telefono": "555-0201-1234",
+            "telefono": "776-201-2345",
             "tipo_usuario": TipoUsuarioEnum.PACIENTE,
         },
         {
-            "email": "juan.hernandez@email.com",
+            "email": "juan.hernandez@utxicotepec.edu.mx",
             "password": "password123",
             "nombre": "Juan",
             "apellido": "Hernández",
-            "telefono": "555-0202-1234",
+            "telefono": "776-202-2345",
             "tipo_usuario": TipoUsuarioEnum.PACIENTE,
         },
         {
-            "email": "laura.gonzalez@email.com",
+            "email": "laura.gonzalez@utxicotepec.edu.mx",
             "password": "password123",
             "nombre": "Laura",
             "apellido": "González",
-            "telefono": "555-0203-1234",
+            "telefono": "776-203-2345",
             "tipo_usuario": TipoUsuarioEnum.PACIENTE,
         },
         {
-            "email": "carlos.ramirez@email.com",
+            "email": "carlos.ramirez@utxicotepec.edu.mx",
             "password": "password123",
             "nombre": "Carlos",
             "apellido": "Ramírez",
-            "telefono": "555-0204-1234",
+            "telefono": "776-204-2345",
             "tipo_usuario": TipoUsuarioEnum.PACIENTE,
         },
         # Admin
         {
-            "email": "admin@medilink.com",
+            "email": "admin@utxicotepec.edu.mx",
             "password": "admin123",
             "nombre": "Admin",
             "apellido": "Sistema",
-            "telefono": "555-0001-1234",
+            "telefono": "776-001-2345",
             "tipo_usuario": TipoUsuarioEnum.ADMIN,
         },
     ]
@@ -162,17 +185,17 @@ def create_doctores(db, usuarios):
         {
             "usuario": doctores_usuarios[0],
             "especialidad": EspecialidadEnum.CARDIOLOGIA,
-            "cedula_profesional": "CED-001",
-            "consultorio": "Consultorio Cardiológico Central",
-            "direccion_consultorio": "Av. Reforma 123, Zona 10",
-            "ciudad": "Ciudad de Guatemala",
-            "estado": "Guatemala",
-            "codigo_postal": "01010",
+            "cedula_profesional": "CED-PUE-001",
+            "consultorio": "Consultorio Cardiológico de Xicotepec",
+            "direccion_consultorio": "Av. 20 de Noviembre 45, Centro",
+            "ciudad": "Xicotepec de Juárez",
+            "estado": "Puebla",
+            "codigo_postal": "73080",
             "anos_experiencia": 12,
-            "costo_consulta": 350.00,
+            "costo_consulta": 450.00,
             "duracion_cita_minutos": 45,
-            "universidad": "Universidad de San Carlos",
-            "biografia": "Cardiólogo con más de 10 años de experiencia en intervenciones cardíacas.",
+            "universidad": "Universidad Autónoma de Puebla",
+            "biografia": "Cardióloga con más de 10 años de experiencia en intervenciones cardíacas y prevención.",
             "acepta_seguro": True,
             "atiende_domicilio": False,
             "atiende_videollamada": True,
@@ -180,17 +203,17 @@ def create_doctores(db, usuarios):
         {
             "usuario": doctores_usuarios[1],
             "especialidad": EspecialidadEnum.PEDIATRIA,
-            "cedula_profesional": "CED-002",
-            "consultorio": "Clínica Pediátrica Infantil",
-            "direccion_consultorio": "Calzada Roosevelt 456, Zona 7",
-            "ciudad": "Ciudad de Guatemala",
-            "estado": "Guatemala",
-            "codigo_postal": "01007",
+            "cedula_profesional": "CED-PUE-002",
+            "consultorio": "Clínica Pediátrica Infantil Xicotepec",
+            "direccion_consultorio": "Calle Hidalgo 123, Col. Centro",
+            "ciudad": "Xicotepec de Juárez",
+            "estado": "Puebla",
+            "codigo_postal": "73080",
             "anos_experiencia": 8,
-            "costo_consulta": 250.00,
+            "costo_consulta": 350.00,
             "duracion_cita_minutos": 30,
-            "universidad": "Universidad Mariano Gálvez",
-            "biografia": "Especialista en cuidado infantil y desarrollo pediátrico.",
+            "universidad": "Universidad Popular Autónoma del Estado de Puebla",
+            "biografia": "Especialista en cuidado infantil y desarrollo pediátrico integral.",
             "acepta_seguro": True,
             "atiende_domicilio": True,
             "atiende_videollamada": True,
@@ -198,16 +221,16 @@ def create_doctores(db, usuarios):
         {
             "usuario": doctores_usuarios[2],
             "especialidad": EspecialidadEnum.DERMATOLOGIA,
-            "cedula_profesional": "CED-003",
-            "consultorio": "Centro Dermatológico Avanzado",
-            "direccion_consultorio": "6a Avenida 7-89, Zona 9",
-            "ciudad": "Ciudad de Guatemala",
-            "estado": "Guatemala",
-            "codigo_postal": "01009",
+            "cedula_profesional": "CED-PUE-003",
+            "consultorio": "Centro Dermatológico Sierra Norte",
+            "direccion_consultorio": "Av. Juárez 234, Col. Reforma",
+            "ciudad": "Xicotepec de Juárez",
+            "estado": "Puebla",
+            "codigo_postal": "73080",
             "anos_experiencia": 15,
-            "costo_consulta": 300.00,
+            "costo_consulta": 400.00,
             "duracion_cita_minutos": 40,
-            "universidad": "Universidad Rafael Landívar",
+            "universidad": "Benemérita Universidad Autónoma de Puebla",
             "biografia": "Experto en tratamientos dermatológicos y cuidado de la piel.",
             "acepta_seguro": False,
             "atiende_domicilio": False,
@@ -216,17 +239,17 @@ def create_doctores(db, usuarios):
         {
             "usuario": doctores_usuarios[3],
             "especialidad": EspecialidadEnum.MEDICINA_GENERAL,
-            "cedula_profesional": "CED-004",
-            "consultorio": "Consultorio Médico General",
-            "direccion_consultorio": "10a Calle 12-34, Zona 1",
-            "ciudad": "Ciudad de Guatemala",
-            "estado": "Guatemala",
-            "codigo_postal": "01001",
+            "cedula_profesional": "CED-PUE-004",
+            "consultorio": "Consultorio Médico General Xicotepec",
+            "direccion_consultorio": "Calle Morelos 89, Centro",
+            "ciudad": "Xicotepec de Juárez",
+            "estado": "Puebla",
+            "codigo_postal": "73080",
             "anos_experiencia": 10,
-            "costo_consulta": 200.00,
+            "costo_consulta": 300.00,
             "duracion_cita_minutos": 30,
-            "universidad": "Universidad Francisco Marroquín",
-            "biografia": "Médico general con amplia experiencia en diagnóstico y tratamiento.",
+            "universidad": "Universidad Autónoma de Puebla",
+            "biografia": "Médico general con amplia experiencia en diagnóstico y tratamiento integral.",
             "acepta_seguro": True,
             "atiende_domicilio": True,
             "atiende_videollamada": True,
@@ -280,57 +303,57 @@ def create_pacientes(db, usuarios):
             "usuario": pacientes_usuarios[0],
             "fecha_nacimiento": date(1985, 5, 15),
             "genero": GeneroEnum.FEMENINO,
-            "direccion": "15 Avenida 8-45, Zona 10",
-            "ciudad": "Ciudad de Guatemala",
-            "estado": "Guatemala",
-            "codigo_postal": "01010",
-            "numero_seguro": "SEG-001234",
+            "direccion": "Calle Allende 67, Col. Centro",
+            "ciudad": "Xicotepec de Juárez",
+            "estado": "Puebla",
+            "codigo_postal": "73080",
+            "numero_seguro": "SEG-PUE-001234",
             "alergias": "Penicilina, Mariscos",
             "tipo_sangre": TipoSangreEnum.A_POSITIVO,
             "contacto_emergencia_nombre": "José Pérez",
-            "contacto_emergencia_telefono": "555-1111",
+            "contacto_emergencia_telefono": "776-111-2345",
         },
         {
             "usuario": pacientes_usuarios[1],
             "fecha_nacimiento": date(1990, 8, 22),
             "genero": GeneroEnum.MASCULINO,
-            "direccion": "8a Calle 15-67, Zona 13",
-            "ciudad": "Ciudad de Guatemala",
-            "estado": "Guatemala",
-            "codigo_postal": "01013",
-            "numero_seguro": "SEG-005678",
+            "direccion": "Av. Independencia 234, Col. Reforma",
+            "ciudad": "Xicotepec de Juárez",
+            "estado": "Puebla",
+            "codigo_postal": "73080",
+            "numero_seguro": "SEG-PUE-005678",
             "alergias": "Ninguna",
             "tipo_sangre": TipoSangreEnum.O_POSITIVO,
             "contacto_emergencia_nombre": "María Hernández",
-            "contacto_emergencia_telefono": "555-2222",
+            "contacto_emergencia_telefono": "776-222-2345",
         },
         {
             "usuario": pacientes_usuarios[2],
             "fecha_nacimiento": date(1992, 3, 10),
             "genero": GeneroEnum.FEMENINO,
-            "direccion": "12 Calle 1-25, Zona 15",
-            "ciudad": "Ciudad de Guatemala",
-            "estado": "Guatemala",
-            "codigo_postal": "01015",
-            "numero_seguro": "SEG-009876",
+            "direccion": "Calle 5 de Mayo 156, Centro",
+            "ciudad": "Xicotepec de Juárez",
+            "estado": "Puebla",
+            "codigo_postal": "73080",
+            "numero_seguro": "SEG-PUE-009876",
             "alergias": "Polvo, Ácaros",
             "tipo_sangre": TipoSangreEnum.B_NEGATIVO,
             "contacto_emergencia_nombre": "Carlos González",
-            "contacto_emergencia_telefono": "555-3333",
+            "contacto_emergencia_telefono": "776-333-2345",
         },
         {
             "usuario": pacientes_usuarios[3],
             "fecha_nacimiento": date(1988, 11, 30),
             "genero": GeneroEnum.MASCULINO,
-            "direccion": "5a Avenida 12-89, Zona 9",
-            "ciudad": "Ciudad de Guatemala",
-            "estado": "Guatemala",
-            "codigo_postal": "01009",
-            "numero_seguro": "SEG-003456",
+            "direccion": "Av. Juárez 345, Col. Revolución",
+            "ciudad": "Xicotepec de Juárez",
+            "estado": "Puebla",
+            "codigo_postal": "73080",
+            "numero_seguro": "SEG-PUE-003456",
             "alergias": "Aspirina",
             "tipo_sangre": TipoSangreEnum.AB_POSITIVO,
             "contacto_emergencia_nombre": "Ana Ramírez",
-            "contacto_emergencia_telefono": "555-4444",
+            "contacto_emergencia_telefono": "776-444-2345",
         },
     ]
 
@@ -486,14 +509,106 @@ def create_citas(db, doctores, pacientes):
     return citas
 
 
+def create_incidents(db):
+    """Crear incidencias de ejemplo"""
+    print("🚨 Creando incidencias...")
+
+    incidents_data = [
+        {
+            "title": "Error 500 en búsqueda de doctores por especialidad",
+            "description": "La API retornaba error 500 al buscar doctores cuando la especialidad se enviaba en mayúsculas (CARDIOLOGIA en lugar de cardiologia)",
+            "endpoint": "/api/busqueda/doctores",
+            "error_message": "Input should be 'medicina_general', 'cardiologia', etc.",
+            "severity": "high",
+            "status": "resolved",
+            "reported_by": "frontend_team",
+            "created_at": datetime.now() - timedelta(days=5),
+            "resolved_at": datetime.now() - timedelta(days=4),
+            "resolution_notes": "Normalizado valores a minúsculas en frontend y agregada validación en backend",
+        },
+        {
+            "title": "Timeout en conexión a base de datos",
+            "description": "Timeouts intermitentes en Railway después de 15 minutos de inactividad. Primera consulta toma 3-5 segundos.",
+            "endpoint": "/api/doctores",
+            "error_message": "Database connection timeout after 15min inactivity",
+            "severity": "medium",
+            "status": "resolved",
+            "reported_by": "monitoring_system",
+            "created_at": datetime.now() - timedelta(days=3),
+            "resolved_at": datetime.now() - timedelta(days=2),
+            "resolution_notes": "Implementado pool_pre_ping=True y pool_recycle=3600 en engine de SQLAlchemy",
+        },
+        {
+            "title": "CORS bloqueando requests desde Vercel",
+            "description": "Frontend desplegado en Vercel no puede hacer requests a la API. Origen bloqueado por política CORS.",
+            "endpoint": "/api/citas",
+            "error_message": "CORS policy: No 'Access-Control-Allow-Origin' header",
+            "severity": "critical",
+            "status": "resolved",
+            "reported_by": "production_monitoring",
+            "created_at": datetime.now() - timedelta(days=2),
+            "resolved_at": datetime.now() - timedelta(days=1),
+            "resolution_notes": "Agregado dominio de Vercel a CORS_ORIGINS en variables de entorno",
+        },
+        {
+            "title": "Lentitud en listado de citas con muchos registros",
+            "description": "Endpoint de listado de citas se vuelve muy lento cuando hay más de 1000 registros",
+            "endpoint": "/api/citas",
+            "error_message": None,
+            "severity": "medium",
+            "status": "in_progress",
+            "reported_by": "performance_test",
+            "created_at": datetime.now() - timedelta(days=1),
+            "resolution_notes": "Implementando paginación y optimización de queries",
+        },
+        {
+            "title": "Error al crear cita con horario fuera de disponibilidad",
+            "description": "Sistema permite crear citas en horarios donde el doctor no está disponible",
+            "endpoint": "/api/citas",
+            "error_message": "Appointment created outside doctor's available hours",
+            "severity": "high",
+            "status": "open",
+            "reported_by": "qa_testing",
+            "created_at": datetime.now(),
+        },
+    ]
+
+    incidents = []
+    for inc_data in incidents_data:
+        incident = Incident(
+            title=inc_data["title"],
+            description=inc_data["description"],
+            endpoint=inc_data["endpoint"],
+            error_message=inc_data.get("error_message"),
+            severity=inc_data["severity"],
+            status=inc_data["status"],
+            reported_by=inc_data["reported_by"],
+            created_at=inc_data.get("created_at", datetime.now()),
+            resolved_at=inc_data.get("resolved_at"),
+            resolution_notes=inc_data.get("resolution_notes"),
+        )
+        db.add(incident)
+        incidents.append(incident)
+
+    db.commit()
+    print(f"✅ {len(incidents)} incidencias creadas")
+    return incidents
+
+
 def main():
     """Función principal del seeder"""
-    print("🚀 Iniciando seeder de MediLink...")
+    print("🚀 Iniciando seeder de MediLink - Xicotepec, Puebla...")
+    print("=" * 60)
+
+    # Crear todas las tablas primero
+    create_all_tables()
+    print("=" * 60)
 
     db = SessionLocal()
     try:
         # Limpiar base de datos
         clear_database()
+        print("=" * 60)
 
         # Crear datos
         usuarios = create_usuarios(db)
@@ -501,33 +616,53 @@ def main():
         pacientes = create_pacientes(db, usuarios)
         horarios = create_horarios(db, doctores)
         citas = create_citas(db, doctores, pacientes)
+        incidents = create_incidents(db)
 
-        print("\n🎉 Seeder completado exitosamente!")
+        print("\n" + "=" * 60)
+        print("🎉 Seeder completado exitosamente!")
+        print("=" * 60)
         print(f"📊 Resumen:")
         print(f"   👥 Usuarios: {len(usuarios)}")
         print(f"   👨‍⚕️ Doctores: {len(doctores)}")
         print(f"   👤 Pacientes: {len(pacientes)}")
         print(f"   🕐 Horarios: {len(horarios)}")
         print(f"   📅 Citas: {len(citas)}")
+        print(f"   🚨 Incidencias: {len(incidents)}")
 
-        print("\n🔑 Credenciales de prueba:")
+        print("\n" + "=" * 60)
+        print("🔑 Credenciales de prueba:")
+        print("=" * 60)
         print("   Doctores:")
         for usuario in usuarios:
             if usuario.tipo_usuario == TipoUsuarioEnum.DOCTOR:
-                print(f"   - {usuario.email} / password123")
+                print(f"   📧 {usuario.email} / password123")
 
         print("\n   Pacientes:")
         for usuario in usuarios:
             if usuario.tipo_usuario == TipoUsuarioEnum.PACIENTE:
-                print(f"   - {usuario.email} / password123")
+                print(f"   📧 {usuario.email} / password123")
 
         print("\n   Admin:")
         for usuario in usuarios:
             if usuario.tipo_usuario == TipoUsuarioEnum.ADMIN:
-                print(f"   - {usuario.email} / admin123")
+                print(f"   📧 {usuario.email} / admin123")
+
+        print("\n" + "=" * 60)
+        print("🌐 Endpoints para probar:")
+        print("=" * 60)
+        print("   GET  /api/doctores")
+        print("   GET  /api/busqueda/doctores")
+        print("   GET  /api/citas")
+        print("   GET  /api/metrics/system")
+        print("   GET  /api/metrics/usage")
+        print("   GET  /api/incidents/")
+        print("   GET  /api/incidents/stats/summary")
+        print("=" * 60)
 
     except Exception as e:
+        print("\n" + "=" * 60)
         print(f"❌ Error en el seeder: {e}")
+        print("=" * 60)
         import traceback
 
         traceback.print_exc()
