@@ -219,7 +219,6 @@ temp/
 .env.local
 .env.production
 .env.*.local
-config.py
 secrets.py
 
 # Archivos de migraciones (según tu estrategia)
