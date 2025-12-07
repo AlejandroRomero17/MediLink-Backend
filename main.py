@@ -1,4 +1,4 @@
-# main.py - VERSIÓN CON MÉTRICAS E INCIDENCIAS
+# main.py - VERSIÓN CON MÉTRICAS E INCIDENCIAS CORREGIDA
 import os
 import sys
 
@@ -59,8 +59,10 @@ app = FastAPI(
 )
 
 # CORS
-cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000")
-origins = [origin.strip() for origin in cors_origins.split(",")]
+cors_origins = os.getenv(
+    "CORS_ORIGINS", "http://localhost:3000,https://medilink-backend-7ivn.onrender.com"
+)
+origins = [origin.strip() for origin in cors_origins.split(",") if origin.strip()]
 
 app.add_middleware(
     CORSMiddleware,
@@ -142,9 +144,10 @@ async def health_check():
     """Health check completo del sistema"""
     try:
         from app.core.database import SessionLocal
+        from sqlalchemy import text  # <-- IMPORTANTE: Agregar este import
 
         db = SessionLocal()
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))  # <-- CORREGIDO: Usar text()
         db.close()
         db_status = "connected"
     except Exception as e:
@@ -167,10 +170,12 @@ async def health_check():
 @app.get("/api/test")
 async def api_test():
     """Endpoint de prueba"""
+    from datetime import datetime
+
     return {
         "message": "API funcionando correctamente",
         "status": "ok",
-        "timestamp": "2025-01-30T10:00:00Z",
+        "timestamp": datetime.now().isoformat(),
     }
 
 
