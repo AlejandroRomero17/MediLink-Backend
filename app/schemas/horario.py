@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
-from datetime import datetime, time
+from datetime import date, datetime, time
 from app.models.enums import DiaSemanaEnum
 
 
