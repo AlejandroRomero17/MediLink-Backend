@@ -1,11 +1,54 @@
-# main.py (EN LA RAÍZ) - VERSIÓN CORREGIDA PARA RENDER
+# main.py - VERSIÓN FINAL PARA RENDER
 import os
 import sys
 
-# 🔥 CRÍTICO: Esto arregla el problema de Render
-current_dir = os.path.dirname(os.path.abspath(__file__))
-if current_dir not in sys.path:
-    sys.path.insert(0, current_dir)
+# 🔥 SOLUCIÓN DEFINITIVA PARA RENDER
+# Obtener el directorio del archivo actual
+current_file = os.path.abspath(__file__)
+current_dir = os.path.dirname(current_file)
+
+# Agregar múltiples paths para asegurar
+paths_to_add = [
+    current_dir,  # Directorio actual
+    os.path.join(current_dir, "app"),  # Directorio app
+    os.path.join(current_dir, "app/core"),  # Directorio core
+]
+
+for path in paths_to_add:
+    if path not in sys.path:
+        sys.path.insert(0, path)
+        print(f"✅ Path agregado: {path}")
+
+print(f"✅ Python path configurado: {sys.path}")
+
+# Intentar importar config primero
+try:
+    from app.core.config import settings
+
+    print("✅ Configuración cargada exitosamente")
+    print(f"   DB_HOST: {settings.DB_HOST}")
+    print(f"   ENVIRONMENT: {settings.ENVIRONMENT}")
+except ImportError as e:
+    print(f"❌ Error cargando configuración: {e}")
+    print("⚠️  Creando configuración por defecto...")
+
+    # Configuración por defecto para emergencia
+    class DefaultSettings:
+        DB_HOST = os.getenv("DB_HOST", "localhost")
+        DB_PORT = os.getenv("DB_PORT", "3306")
+        DB_USER = os.getenv("DB_USER", "root")
+        DB_PASSWORD = os.getenv("DB_PASSWORD", "")
+        DB_NAME = os.getenv("DB_NAME", "medilink")
+        SECRET_KEY = os.getenv("SECRET_KEY", "default-secret-key-change-in-production")
+        ALGORITHM = os.getenv("ALGORITHM", "HS256")
+        CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+        ENVIRONMENT = os.getenv("ENVIRONMENT", "production")
+
+        @property
+        def sqlalchemy_database_url(self):
+            return f"mysql+pymysql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+
+    settings = DefaultSettings()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,44 +58,10 @@ from dotenv import load_dotenv
 # Cargar variables de entorno
 load_dotenv()
 
-try:
-    # Intentar importar base de datos (puede fallar si no hay conexión)
-    from app.core.database import engine
-    from app.models.base import Base
-
-    # Crear tablas solo si estamos en desarrollo
-    if os.getenv("ENVIRONMENT", "development") != "production":
-        try:
-            Base.metadata.create_all(bind=engine)
-            print("✅ Tablas de base de datos verificadas")
-        except Exception as e:
-            print(f"⚠️  Nota al crear tablas: {e}")
-except ImportError as e:
-    print(f"⚠️  Error importando módulos de base de datos: {e}")
-    print("⚠️  Continuando sin inicialización de BD...")
-
-# Importar routers con manejo de errores
-try:
-    from app.routers import (
-        usuarios,
-        pacientes,
-        doctores,
-        citas,
-        disponibilidad,
-        registro,
-        busqueda,
-        horarios,
-    )
-
-    routers_loaded = True
-except ImportError as e:
-    print(f"❌ Error cargando routers: {e}")
-    routers_loaded = False
-
 # Crear aplicación FastAPI
 app = FastAPI(
     title="MediLink API",
-    description="Sistema de gestión de citas médicas",
+    description="Sistema de gestión de citas médicas - Render Deployment",
     version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -65,7 +74,9 @@ app = FastAPI(
 )
 
 # Configurar CORS
-cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173")
+cors_origins = os.getenv(
+    "CORS_ORIGINS", "http://localhost:3000,https://medilink-backend-7ivn.onrender.com"
+)
 origins = [origin.strip() for origin in cors_origins.split(",") if origin.strip()]
 
 app.add_middleware(
@@ -75,6 +86,42 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Intentar cargar routers
+routers = []
+try:
+    from app.routers import (
+        usuarios,
+        pacientes,
+        doctores,
+        citas,
+        disponibilidad,
+        registro,
+        busqueda,
+        horarios,
+    )
+
+    routers = [
+        ("registro", registro.router),
+        ("usuarios", usuarios.router),
+        ("pacientes", pacientes.router),
+        ("doctores", doctores.router),
+        ("citas", citas.router),
+        ("disponibilidad", disponibilidad.router),
+        ("busqueda", busqueda.router),
+        ("horarios", horarios.router),
+    ]
+    print("✅ Todos los routers cargados")
+except ImportError as e:
+    print(f"⚠️  Algunos routers no se cargaron: {e}")
+
+# Incluir routers si se cargaron
+for name, router in routers:
+    try:
+        app.include_router(router, prefix="/api", tags=[name])
+        print(f"✅ Router {name} incluido")
+    except Exception as e:
+        print(f"❌ Error incluyendo router {name}: {e}")
 
 
 # Función personalizada para OpenAPI
@@ -102,7 +149,6 @@ def custom_openapi():
     # Aplicar seguridad globalmente
     for path in openapi_schema["paths"]:
         for method in openapi_schema["paths"][path]:
-            # Excluir endpoints públicos
             if path in ["/", "/health", "/api/registro/", "/api/usuarios/login"]:
                 continue
             if method in ["post", "get", "put", "delete"]:
@@ -114,38 +160,27 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 
-# Incluir routers si se cargaron correctamente
-if routers_loaded:
-    app.include_router(registro.router, prefix="/api", tags=["registro"])
-    app.include_router(usuarios.router, prefix="/api", tags=["usuarios"])
-    app.include_router(pacientes.router, prefix="/api", tags=["pacientes"])
-    app.include_router(doctores.router, prefix="/api", tags=["doctores"])
-    app.include_router(citas.router, prefix="/api", tags=["citas"])
-    app.include_router(disponibilidad.router, prefix="/api", tags=["disponibilidad"])
-    app.include_router(busqueda.router, prefix="/api", tags=["busqueda"])
-    app.include_router(horarios.router, prefix="/api", tags=["horarios"])
-else:
 
-    @app.get("/api/error")
-    async def router_error():
-        return {"error": "Routers no cargados correctamente"}
-
-
-# Ruta raíz
+# Ruta raíz mejorada
 @app.get("/")
 async def root():
     return {
         "mensaje": "Bienvenido a MediLink API v2.0",
         "version": "2.0.0",
         "status": "activo",
+        "deployment": "Render.com",
+        "url": "https://medilink-backend-7ivn.onrender.com",
         "documentacion": "/docs",
-        "features": [
-            "Registro combinado (usuario + perfil)",
-            "Sistema de horarios flexible por día",
-            "Autenticación JWT",
-            "Geolocalización de doctores",
-            "Valoraciones y reseñas",
-        ],
+        "endpoints": {
+            "health": "/health",
+            "docs": "/docs",
+            "api_base": "/api",
+            "debug": "/debug/paths",
+        },
+        "database": {
+            "host": settings.DB_HOST,
+            "status": "configurada" if settings.DB_HOST != "localhost" else "local",
+        },
     }
 
 
@@ -153,6 +188,7 @@ async def root():
 @app.get("/health")
 async def health_check():
     try:
+        # Intentar conexión a BD si tenemos los módulos
         from app.core.database import SessionLocal
 
         db = SessionLocal()
@@ -160,42 +196,43 @@ async def health_check():
         db.close()
         db_status = "connected"
     except Exception as e:
-        db_status = f"disconnected: {str(e)}"
+        db_status = f"config_error: {str(e)[:100]}"
 
     return {
         "status": "healthy",
+        "service": "MediLink API",
+        "deployment": "Render.com",
         "database": db_status,
         "version": "2.0.0",
-        "environment": os.getenv("ENVIRONMENT", "development"),
+        "environment": settings.ENVIRONMENT,
+        "cors_origins": origins,
+        "available_routers": [name for name, _ in routers],
     }
 
 
-# Ruta para debug de imports
-@app.get("/debug/imports")
-async def debug_imports():
-    import_paths = sys.path
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-
-    # Verificar si podemos importar módulos
-    modules_status = {}
-    try:
-        from app.core import config
-
-        modules_status["app.core.config"] = "✅ OK"
-    except ImportError as e:
-        modules_status["app.core.config"] = f"❌ {str(e)}"
-
-    try:
-        from app.core import database
-
-        modules_status["app.core.database"] = "✅ OK"
-    except ImportError as e:
-        modules_status["app.core.database"] = f"❌ {str(e)}"
-
+# Ruta de debug para ver paths
+@app.get("/debug/paths")
+async def debug_paths():
     return {
-        "current_directory": current_dir,
-        "python_path": import_paths,
-        "modules": modules_status,
+        "current_file": os.path.abspath(__file__),
+        "current_dir": os.path.dirname(os.path.abspath(__file__)),
+        "sys_path": sys.path,
+        "working_dir": os.getcwd(),
+        "environment_vars": {
+            "DB_HOST": os.getenv("DB_HOST", "not_set"),
+            "ENVIRONMENT": os.getenv("ENVIRONMENT", "not_set"),
+            "RENDER": os.getenv("RENDER", "not_set"),
+        },
+    }
+
+
+# Ruta de prueba de API
+@app.get("/api/test")
+async def api_test():
+    return {
+        "message": "API funcionando",
+        "status": "ok",
+        "timestamp": "2025-01-30T10:00:00Z",
     }
 
 
@@ -203,5 +240,6 @@ async def debug_imports():
 if __name__ == "__main__":
     import uvicorn
 
-    port = int(os.getenv("PORT", 8000))
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+    port = int(os.getenv("PORT", 10000))
+    print(f"🚀 Iniciando servidor en puerto {port}")
+    uvicorn.run(app, host="0.0.0.0", port=port)
