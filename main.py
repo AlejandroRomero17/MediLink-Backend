@@ -34,7 +34,11 @@ except ImportError as e:
         DB_NAME = os.getenv("DB_NAME", "medilink")
         SECRET_KEY = os.getenv("SECRET_KEY", "default-secret-key")
         ALGORITHM = "HS256"
-        CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+        CORS_ORIGINS = os.getenv(
+            "CORS_ORIGINS",
+            "http://localhost:3000",
+            "http://localhost:3000,https://medi-link-frontend-five.vercel.app",
+        )
         ENVIRONMENT = os.getenv("ENVIRONMENT", "production")
 
         @property
